@@ -38,53 +38,65 @@ A modern, full-stack collaborative design and prototyping platform where teams c
 - **Redis** for caching and pub/sub
 
 ### DevOps & Deployment
-- **Docker** for containerization
-- **Docker Compose** for local development
-- **GitHub Actions** for CI/CD
-- **AWS/Railway/Vercel** ready
+- **Docker** for containerization (multi-stage, dev + runtime targets)
+- **Docker Compose** for both development and one-command production
+- **Nginx** serves the SPA and proxies `/api` + WebSocket (single origin)
+- **GitHub Actions** for CI/CD and versioned image publishing to GHCR
+- **AWS/Railway/Vercel** ready (see docs)
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Redis (optional, for production)
-- Git
+### Option A — Docker Compose (Recommended, easiest)
 
-### Installation
-
-1. **Clone the repository**
 ```bash
 git clone https://github.com/Ari-Han-t/collabuild.git
 cd collabuild
+
+# Production: one command brings up everything behind a single nginx entry point
+docker compose -f docker-compose.prod.yml up -d --build
+# Open http://localhost:8080
+
+# Development (hot-reload)
+docker compose up --build
+# Frontend http://localhost:5173 · Backend http://localhost:3000
 ```
 
-2. **Setup Backend**
+### Option B — Manual Setup
+
+**Prerequisites:** Node.js 18+ · PostgreSQL 14+ (optional, mock DB is default)
+
+1. **Backend**
 ```bash
 cd backend
 npm install
 cp .env.example .env
-npm run db:migrate
-npm run dev
+npm run dev          # or: npm run build && npm start
 ```
 
-3. **Setup Frontend**
+2. **Frontend**
 ```bash
 cd frontend
 npm install
 cp .env.example .env
-npm run dev
+npm run dev          # or: npm run build && npm run preview
 ```
 
-4. **Access the application**
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000
-- WebSocket: ws://localhost:3000
+3. **Access the application**
+- Frontend (dev): http://localhost:5173
+- Backend API (dev): http://localhost:3000
+- Production (single origin): http://localhost:8080
 
-### Using Docker Compose
-```bash
-docker-compose up -d
-```
+> Everything runs out of the box with an in-memory mock database — no setup
+> required. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for production + PaaS,
+> [SECURITY.md](SECURITY.md) for the security/versioning policy.
+
+## 🔖 Versioning
+
+This project uses [Semantic Versioning](https://semver.org/). Every dependency
+security/version update is **version-controlled** via Dependabot PRs, committed
+lockfiles, and SemVer release tags. See
+[SECURITY.md](SECURITY.md#version-control-for-every-update) and
+[CHANGELOG.md](CHANGELOG.md).
 
 ## 📁 Project Structure
 
@@ -92,31 +104,35 @@ docker-compose up -d
 collabuild/
 ├── backend/                 # Node.js Express server
 │   ├── src/
-│   │   ├── models/         # Database models
-│   │   ├── services/       # Business logic
-│   │   ├── controllers/    # Route handlers
-│   │   ├── middleware/     # Express middleware
-│   │   ├── websocket/      # Socket.io handlers
-│   │   ├── utils/          # Utilities
-│   │   └── index.ts        # Entry point
-│   ├── prisma/             # Database schema
-│   ├── .env.example        # Environment template
-│   └── package.json
-├── frontend/               # React application
+│   │   ├── controllers/     # Route handlers
+│   │   ├── middleware/      # Auth & error handling
+│   │   ├── websocket/       # Socket.io handlers
+│   │   ├── utils/           # Utilities
+│   │   └── index.ts         # Entry point
+│   ├── prisma/              # Database schema
+│   ├── .env.example         # Environment template
+│   └── Dockerfile           # Multi-stage (dev + runtime)
+├── frontend/                # React application
 │   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── store/          # Redux store
-│   │   ├── types/          # TypeScript types
-│   │   ├── hooks/          # Custom hooks
-│   │   ├── services/       # API services
-│   │   ├── canvas/         # Canvas logic
-│   │   └── App.tsx         # Main component
-│   ├── .env.example        # Environment template
-│   └── package.json
-├── docs/                   # Documentation
-├── docker-compose.yml
-├── .gitignore
+│   │   ├── components/      # React components
+│   │   ├── pages/           # Page components
+│   │   ├── store/           # Redux store
+│   │   ├── types/           # TypeScript types
+│   │   ├── services/        # API services
+│   │   ├── canvas/          # Canvas rendering
+│   │   └── App.tsx          # Main component
+│   ├── nginx.conf           # Production proxy config
+│   └── Dockerfile
+├── docs/                    # Documentation
+├── .github/
+│   ├── workflows/           # CI, image publish, deploy
+│   └── dependabot.yml       # Security + version updates
+├── docker-compose.yml       # Development
+├── docker-compose.prod.yml  # Production (one-command deploy)
+├── .env.prod.example
+├── SECURITY.md              # Security & versioning policy
+├── CHANGELOG.md
+├── VERSION
 └── README.md
 ```
 
@@ -211,6 +227,12 @@ npm run type-check   # TypeScript check
 
 ## 📦 Deployment
 
+### Single-Node Production (Recommended)
+```bash
+cp .env.prod.example .env     # set JWT_SECRET etc.
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
 ### Environment Variables
 
 **Backend (.env)**
@@ -222,14 +244,15 @@ REDIS_URL=redis://...
 CORS_ORIGIN=https://yourdomain.com
 ```
 
-**Frontend (.env)**
+**Frontend (.env / build args)**
 ```
 VITE_API_URL=https://api.yourdomain.com
 VITE_WS_URL=wss://api.yourdomain.com
 ```
 
-### Deploy to Railway, Vercel, or AWS
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
+### Deploy to Railway, Vercel, AWS, or a VPS
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions,
+including the GitHub Actions deploy workflow and versioned GHCR images.
 
 ## 🤝 Contributing
 

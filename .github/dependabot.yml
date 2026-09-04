@@ -1,0 +1,143 @@
+version: 2
+updates:
+  # ------------------------------------------------------------------
+  # SECURITY UPDATES
+  # Automatically opens PRs when a vulnerable dependency has a fix.
+  # ------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 15
+    target-branch: "main"
+    labels:
+      - "security"
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "deps(backend)"
+      prefix-development: "deps(backend/dev)"
+      include: "scope"
+    # Security: only act on known vulnerable versions when a fix exists.
+    security-updates-only: false
+    # Group compatible non-breaking upgrades to reduce PR noise.
+    groups:
+      prod-dependencies:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+        appearance: "all"
+      dev-dependencies:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+        appearance: "all"
+    # Versioning strategy: bump version only, never range-widen.
+    versioning-strategy: increase-if-necessary
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 15
+    target-branch: "main"
+    labels:
+      - "security"
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "deps(frontend)"
+      prefix-development: "deps(frontend/dev)"
+      include: "scope"
+    security-updates-only: false
+    groups:
+      prod-dependencies:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+        appearance: "all"
+      dev-dependencies:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+        appearance: "all"
+    versioning-strategy: increase-if-necessary
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    ignore:
+      # Major image base bumps may require build changes; review manually.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 5
+    labels:
+      - "security"
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 5
+    labels:
+      - "security"
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "security"
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "security"
+      - "dependencies"
+      - "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

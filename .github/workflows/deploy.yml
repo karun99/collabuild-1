@@ -1,0 +1,85 @@
+name: Deploy
+
+# One-command style deployment to a Docker host (VPS / droplet).
+# Triggered manually or on tags. Requires the following repository secrets:
+#   DEPLOY_HOST      - SSH host
+#   DEPLOY_USER      - SSH user
+#   DEPLOY_SSH_KEY   - SSH private key
+#   APP_PORT         - (optional) public port, default 8080
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy environment"
+        required: true
+        default: "production"
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: contains(github.ref_name, 'main') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write deployment compose file
+        run: |
+          cat > docker-compose.deploy.yml <<'EOF'
+          version: "3.8"
+          services:
+            backend:
+              image: ghcr.io/${{ github.repository }}-backend:latest
+              restart: unless-stopped
+              environment:
+                NODE_ENV: production
+                PORT: 3000
+                JWT_SECRET: ${JWT_SECRET}
+                CORS_ORIGIN: ${CORS_ORIGIN}
+              expose: ["3000"]
+            frontend:
+              image: ghcr.io/${{ github.repository }}-frontend:latest
+              restart: unless-stopped
+              ports:
+                - "${APP_PORT:-8080}:80"
+              depends_on:
+                - backend
+            postgres:
+              image: postgres:15-alpine
+              restart: unless-stopped
+              environment:
+                POSTGRES_USER: ${POSTGRES_USER:-postgres}
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+                POSTGRES_DB: collabuild
+              volumes: [postgres_data:/var/lib/postgresql/data]
+            redis:
+              image: redis:7-alpine
+              restart: unless-stopped
+          volumes:
+            postgres_data:
+          EOF
+
+      - name: Deploy via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "docker-compose.deploy.yml"
+          target: "/opt/collabuild"
+
+      - name: Pull and restart stack
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/collabuild
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ghcr.io/${{ github.repository }}-backend:latest
+            docker pull ghcr.io/${{ github.repository }}-frontend:latest
+            docker compose -f docker-compose.deploy.yml up -d --no-deps --force-recreate backend frontend
+            docker image prune -f || true
+            echo "CollaBuild deployed. App available at http://${{ secrets.DEPLOY_HOST }}:${APP_PORT:-8080}"

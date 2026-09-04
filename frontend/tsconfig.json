@@ -16,8 +16,10 @@
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "isolation": "hybrid",
+    "isolatedModules": true,
+    "noEmit": true,
     "moduleResolution": "bundler",
+    "types": ["vite/client"],
     "jsx": "react-jsx"
   },
   "include": ["src"],

@@ -1,5 +1,11 @@
 version: "3.8"
 
+# Development stack with hot-reload.
+#   docker compose up --build
+# Frontend: http://localhost:5173   Backend API: http://localhost:3000
+#
+# For production use: docker compose -f docker-compose.prod.yml up -d --build
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -28,11 +34,14 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      target: dev
     environment:
       NODE_ENV: development
+      PORT: 3000
       DATABASE_URL: postgresql://postgres:password@postgres:5432/collabuild
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production-12345
+      JWT_SECRET: dev-secret-change-in-production
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost:5173
     ports:
@@ -44,18 +53,22 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src
-    command: npm run dev
+      - ./backend/prisma:/app/prisma
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     ports:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:3000
-      VITE_WS_URL: ws://localhost:3000
+      VITE_WS_URL: http://localhost:3000
+    depends_on:
+      - backend
     volumes:
       - ./frontend/src:/app/src
-    command: npm run dev
+      - ./frontend/index.html:/app/index.html
 
 volumes:
   postgres_data:

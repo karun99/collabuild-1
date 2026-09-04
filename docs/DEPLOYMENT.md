@@ -1,92 +1,150 @@
 # Deployment Guide
 
-## Prerequisites
+CollaBuild is designed to be **easy to deploy**. The recommended path is a
+single-node production stack via Docker Compose (one command), or the manual
+build for platforms like Railway/Render/Vercel.
 
-- Node.js 18+
-- PostgreSQL 14+
-- Docker (optional)
-- AWS account or Railway/Vercel account
+---
 
-## Environment Setup
+## 1. Quick Deploy (Docker Compose — Recommended)
 
-### Backend (.env)
-```
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=postgresql://user:password@host:5432/collabuild
-JWT_SECRET=<generate-strong-secret>
-JWT_EXPIRE=7d
-REDIS_URL=redis://host:6379
-CORS_ORIGIN=https://yourdomain.com
-```
-
-### Frontend (.env)
-```
-VITE_API_URL=https://api.yourdomain.com
-VITE_WS_URL=wss://api.yourdomain.com
-```
-
-## Docker Deployment
+Single command on any machine / VPS with Docker:
 
 ```bash
-# Build images
-docker-compose build
+git clone https://github.com/Ari-Han-t/collabuild.git
+cd collabuild
 
-# Run containers
-docker-compose up -d
-
-# Run migrations
-docker-compose exec backend npm run db:migrate
+# Bring up the whole stack behind one nginx entry point
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-## Railway Deployment
+Then open **http://localhost:8080**.
 
-1. Connect GitHub repository
-2. Add PostgreSQL plugin
-3. Add Redis plugin
-4. Set environment variables
-5. Deploy backend and frontend separately
+The production stack includes:
 
-## Vercel Deployment (Frontend)
+| Service   | Container | Notes                                        |
+| --------- | --------- | -------------------------------------------- |
+| frontend  | nginx     | Serves the SPA and proxies `/api` + WebSocket |
+| backend   | node      | REST API + Socket.io on port 3000             |
+| postgres  | postgres15 | Persistence (optional for mock mode)          |
+| redis     | redis7    | Cache / pub-sub (optional for mock mode)      |
+
+**Configuration** via environment variables (copy `.env.prod.example`):
 
 ```bash
+cp .env.prod.example .env
+# edit .env as needed, e.g.:
+#   PORT=8080
+#   JWT_SECRET=generate-a-long-random-secret
+#   CORS_ORIGIN=https://yourdomain.com
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+### Updating
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+```
+
+---
+
+## 2. Docker Compose (Development, hot-reload)
+
+```bash
+docker compose up --build
+# Frontend http://localhost:5173 · Backend http://localhost:3000
+```
+
+---
+
+## 3. Manual / PaaS Deployment (Railway, Render, Vercel, Fly)
+
+### Backend (Node 18+)
+
+```bash
+cd backend
+npm install
+cp .env.example .env          # set DATABASE_URL, JWT_SECRET, etc.
 npm run build
-vercel deploy
+npm start
 ```
 
-## AWS Deployment
-
-1. Create EC2 instance
-2. Install Node.js and PostgreSQL
-3. Clone repository
-4. Setup environment variables
-5. Run `npm install && npm run build`
-6. Use PM2 for process management
-7. Setup Nginx reverse proxy
-
-## Database Migrations
+### Frontend static build
 
 ```bash
-# Run pending migrations
-npm run db:migrate
-
-# Create new migration
-npx prisma migrate dev --name migration_name
-
-# Reset database (dev only)
-npx prisma migrate reset
+cd frontend
+npm install
+# For Vercel/Railway static hosting:
+VITE_API_URL=https://api.yourdomain.com VITE_WS_URL=wss://api.yourdomain.com npm run build
+# serve the `dist/` folder; point /api and /socket.io at the backend
 ```
 
-## SSL Certificates
+> In production the frontend calls the backend through the same origin
+> (`/api` and `/socket.io`). On PaaS set `VITE_API_URL=/api`,
+> `VITE_WS_URL=/socket.io` and configure a reverse proxy / rewrite so `/api`
+> and `/socket.io` hit the backend service.
 
-Use Let's Encrypt with Certbot:
+---
+
+## 4. Versioning & Releases
+
+Every update is version-controlled:
+
+- **Lockfiles** (`package-lock.json`) pin exact versions — commit them.
+- **Dependabot** opens grouped PRs for security + version updates (see
+  `.github/dependabot.yml` and `SECURITY.md`).
+- **SemVer tags** (`v1.2.3`) trigger the Docker publish workflow
+  (`.github/workflows/docker-publish.yml`), producing immutable, tagged images
+  on GHCR.
+
+Cutting a release:
+
 ```bash
-sudo certbot certonly --standalone -d yourdomain.com
+# 1. bump the version in package.json, CHANGELOG.md, and VERSION
+# 2. commit
+# 3. tag and push
+git tag -a v1.1.0 -m "Release v1.1.0"
+git push --tags
 ```
 
-## Monitoring
+The action publishes `ghcr.io/<owner>/collabuild-backend:<ver>` and
+`...-frontend:<ver>` with a `latest` tag for mainline.
 
-- Use PM2 for process monitoring
-- Setup error tracking (Sentry)
-- Monitor database performance
-- Use CDN for frontend assets
+---
+
+## 5. Production Reverse Proxy / SSL
+
+If you deploy the nginx container behind your own host, or want to add TLS:
+
+```bash
+# Example: run behind Caddy for automatic HTTPS
+# or add to nginx.conf:
+#   listen 443 ssl;
+#   server_name yourdomain.com;
+```
+
+For DMZ-only hosts, expose `80` and terminate TLS at your edge (Caddy, Nginx,
+Cloudflare, or an AWS ALB).
+
+---
+
+## 6. Database Migrations (Persistent mode)
+
+The backend runs out of the box with an in-memory mock DB (zero setup). To use
+the persistent PostgreSQL schema:
+
+```bash
+cd backend
+npx prisma migrate deploy   # apply migrations
+npm run db:seed             # optional demo data
+```
+
+---
+
+## 7. Monitoring & Operations
+
+- Container logs: `docker compose -f docker-compose.prod.yml logs -f`
+- Health check: `curl http://localhost:8080/health` → `{"status":"ok"}`
+- Processes auto-restart via `restart: unless-stopped`

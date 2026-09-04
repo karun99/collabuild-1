@@ -5,9 +5,9 @@ import { projectService } from "../services/api";
 import type { Project, DrawingShape } from "../types";
 import { io, Socket } from "socket.io-client";
 import { useAppDispatch, useAppSelector } from "../hooks/useRedux";
-import { addShape, updateShape, upsertShape, selectShape } from "../store/canvasSlice";
+import { updateShape, upsertShape, selectShape } from "../store/canvasSlice";
 
-const WS_URL = (import.meta as any).env.VITE_WS_URL || "http://localhost:4000";
+const WS_URL = (import.meta as any).env?.VITE_WS_URL || "http://localhost:3000";
 
 interface EditorPageProps {
   projectId: string;
@@ -162,7 +162,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ projectId, onBack }) => 
         </div>
 
         <div className="flex-1 relative">
-          <Canvas projectId={projectId} onShapeUpdate={handleShapeUpdate} />
+          <Canvas onShapeUpdate={handleShapeUpdate} />
         </div>
 
         {/* Properties Panel */}
