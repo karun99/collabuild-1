@@ -49,7 +49,7 @@ A modern, full-stack collaborative design and prototyping platform where teams c
 ### Option A — Docker Compose (Recommended, easiest)
 
 ```bash
-git clone https://github.com/Ari-Han-t/collabuild.git
+git clone https://github.com/karun99/collabuild-1.git
 cd collabuild
 
 # Production: one command brings up everything behind a single nginx entry point
