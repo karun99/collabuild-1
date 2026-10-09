@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "collabuild-1",
+    "version": "unknown",
+    "description": ""
+  },
+  "stack": "node",
+  "routes": [
+    {
+      "method": "get",
+      "path": "/health"
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/register"
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/login"
+    },
+    {
+      "method": "get",
+      "path": "/api/auth/profile"
+    },
+    {
+      "method": "get",
+      "path": "/api/projects"
+    },
+    {
+      "method": "post",
+      "path": "/api/projects"
+    },
+    {
+      "method": "get",
+      "path": "/api/projects/:projectId"
+    },
+    {
+      "method": "put",
+      "path": "/api/projects/:projectId"
+    },
+    {
+      "method": "delete",
+      "path": "/api/projects/:projectId"
+    }
+  ],
+  "pages": [],
+  "base_url": "http://localhost:3000",
+  "module": null,
+  "scripts": {},
+  "server": "mcp-server/server.mjs",
+  "runner": "node",
+  "runner_cmd": "node"
+}

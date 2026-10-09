@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "collabuild-1": {
+      "command": "node",
+      "args": [
+        "mcp-server/server.mjs"
+      ]
+    }
+  }
+}
